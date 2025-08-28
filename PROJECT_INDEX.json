@@ -1,6 +1,6 @@
 {
-  "indexed_at": "2025-08-28T12:34:49.207676",
-  "root": "/home/liam/.claude-code-project-index",
+  "indexed_at": "2025-08-28T12:35:33.227502",
+  "root": ".",
   "project_structure": {
     "type": "tree",
     "root": ".",
@@ -59,19 +59,23 @@
     "scripts": "Build and utility scripts"
   },
   "stats": {
-    "total_files": 13,
+    "total_files": 14,
     "total_directories": 2,
     "fully_parsed": {
       "python": 6,
       "shell": 1
     },
     "listed_only": {
-      "shell": 5,
-      "json": 1
+      "json": 2,
+      "shell": 5
     },
     "markdown_files": 3
   },
   "files": {
+    ".submodule_indexes.json": {
+      "language": "json",
+      "parsed": false
+    },
     "uninstall.sh": {
       "language": "shell",
       "parsed": false
@@ -631,7 +635,5 @@
       "index_utils"
     ]
   },
-  "staleness_check": 1755794089.243074,
-  "excluded_submodules": [],
-  "index_type": "parent_only"
+  "staleness_check": 1755794133.258783
 }
