@@ -137,6 +137,7 @@ fi
 chmod +x "$INSTALL_DIR/install.sh" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/uninstall.sh" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/scripts/project-index-helper.sh" 2>/dev/null || true
+chmod +x "$INSTALL_DIR/scripts/submodule-index-helper.sh" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/scripts/find_python.sh" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/scripts/run_python.sh" 2>/dev/null || true
 
@@ -144,68 +145,49 @@ chmod +x "$INSTALL_DIR/scripts/run_python.sh" 2>/dev/null || true
 echo "$PYTHON_CMD" > "$INSTALL_DIR/.python_cmd"
 echo "   ✓ Python command saved: $PYTHON_CMD"
 
-# Create /index command
+# Create Claude commands directory if it doesn't exist
+mkdir -p "$HOME/.claude/commands"
+
+# Create the /index command
 echo ""
 echo "Creating /index command..."
-mkdir -p "$HOME/.claude/commands"
 cat > "$HOME/.claude/commands/index.md" << 'EOF'
----
-name: index
-description: Create or update PROJECT_INDEX.json for the current project
----
+Execute the PROJECT_INDEX helper script at ~/.claude-code-project-index/scripts/project-index-helper.sh
 
-# PROJECT_INDEX Command
+Usage:
+- /index - Create or update PROJECT_INDEX.json for current project
 
-This command creates or updates a PROJECT_INDEX.json file that gives Claude architectural awareness of your codebase.
-
-The indexer script is located at:
-`~/.claude-code-project-index/scripts/project_index.py`
-
-## What it does
-
-The PROJECT_INDEX creates a comprehensive map of your project including:
-- Directory structure and file organization
-- Function and class signatures with type annotations
-- Call graphs showing what calls what
+This analyzes your codebase and creates PROJECT_INDEX.json with:
+- Directory tree structure
+- Function/method signatures  
+- Class inheritance relationships
 - Import dependencies
 - Documentation structure
-- Directory purposes
+- Language-specific parsing for Python, JavaScript/TypeScript, and Shell scripts
 
-## Usage
-
-Simply type `/index` in any project directory to create or update the index.
-
-## About the Tool
-
-**PROJECT_INDEX** is a community tool created by Eric Buess that helps Claude Code understand your project structure better. 
-
-- **GitHub**: https://github.com/ericbuess/claude-code-project-index
-- **Purpose**: Prevents code duplication, ensures proper file placement, maintains architectural consistency
-- **Philosophy**: Fork and customize for your needs - Claude can modify it instantly
-
-## How to Use the Index
-
-After running `/index`, you can:
-1. Reference it directly: `@PROJECT_INDEX.json what functions call authenticate_user?`
-2. Use with -i flag: `refactor the auth system -i`
-3. Add to CLAUDE.md for auto-loading: `@PROJECT_INDEX.json`
-
-## Implementation
-
-When you run `/index`, Claude will:
-1. Check if PROJECT_INDEX is installed at ~/.claude-code-project-index
-2. Run the indexer script at ~/.claude-code-project-index/scripts/project_index.py to create/update PROJECT_INDEX.json
-3. Provide feedback on what was indexed
-4. The index is then available as PROJECT_INDEX.json
-
-## Troubleshooting
-
-If the index is too large for your project, ask Claude:
-"The indexer creates too large an index. Please modify it to only index src/ and lib/ directories"
-
-For other issues, the tool is designed to be customized - just describe your problem to Claude!
+The index is automatically updated when you edit files through PostToolUse hooks.
 EOF
+
 echo "✓ Created /index command"
+
+# Create the /index-submodules command
+echo "Creating /index-submodules command..."
+cat > "$HOME/.claude/commands/index-submodules.md" << 'EOF'
+Execute the submodule index helper script at ~/.claude-code-project-index/scripts/submodule-index-helper.sh
+
+Usage:
+- /index-submodules - Manage PROJECT_INDEX.json files for parent projects and their Git submodules
+
+This provides an interactive menu to:
+- Index parent project only (excluding submodules)
+- Index individual submodules
+- Index all submodules at once
+- View index status for all components
+
+Each submodule gets its own PROJECT_INDEX.json file within its directory.
+EOF
+
+echo "✓ Created /index-submodules command"
 
 # Update hooks in settings.json
 echo ""
@@ -226,20 +208,21 @@ jq '
   # Initialize hooks if not present
   if .hooks == null then .hooks = {} else . end |
   
-  # Initialize UserPromptSubmit if not present (for index-aware mode)
-  if .hooks.UserPromptSubmit == null then .hooks.UserPromptSubmit = [] else . end |
+  # Initialize PostToolUse if not present
+  if .hooks.PostToolUse == null then .hooks.PostToolUse = [] else . end |
   
-  # Filter out any existing PROJECT_INDEX UserPromptSubmit hooks, then add the new one
-  .hooks.UserPromptSubmit = ([.hooks.UserPromptSubmit[] | select(
+  # Filter out any existing PROJECT_INDEX PostToolUse hooks, then add the new one
+  .hooks.PostToolUse = ([.hooks.PostToolUse[] | select(
     all(.hooks[]?.command // ""; 
-      contains("i_flag_hook.py") | not) and
+      contains("update_index.py") | not) and
     all(.hooks[]?.command // ""; 
       contains("project_index") | not)
   )] + [{
+    "matcher": "Write|Edit|MultiEdit",
     "hooks": [{
       "type": "command",
-      "command": "'"$HOME"'/.claude-code-project-index/scripts/run_python.sh '"$HOME"'/.claude-code-project-index/scripts/i_flag_hook.py",
-      "timeout": 20
+      "command": "'"$HOME"'/.claude-code-project-index/scripts/run_python.sh '"$HOME"'/.claude-code-project-index/scripts/update_index.py",
+      "timeout": 5
     }]
   }]) |
   
@@ -249,8 +232,6 @@ jq '
   # Filter out any existing PROJECT_INDEX Stop hooks, then add the new one
   .hooks.Stop = ([.hooks.Stop[] | select(
     all(.hooks[]?.command // ""; 
-      contains("stop_hook.py") | not) and
-    all(.hooks[]?.command // ""; 
       contains("reindex_if_needed.py") | not) and
     all(.hooks[]?.command // ""; 
       contains("project_index") | not)
@@ -258,7 +239,7 @@ jq '
     "matcher": "",
     "hooks": [{
       "type": "command",
-      "command": "'"$HOME"'/.claude-code-project-index/scripts/run_python.sh '"$HOME"'/.claude-code-project-index/scripts/stop_hook.py",
+      "command": "'"$HOME"'/.claude-code-project-index/scripts/run_python.sh '"$HOME"'/.claude-code-project-index/scripts/reindex_if_needed.py",
       "timeout": 10
     }]
   }])
@@ -292,9 +273,8 @@ echo "   • index_utils.py"
 echo "   • detect_external_changes.py"
 echo ""
 echo "🚀 Usage:"
-echo "   • Add -i flag to any prompt for index-aware mode (e.g., 'fix auth bug -i')"
-echo "   • Use -ic flag to export to clipboard for large context AI models"
+echo "   • Use /index command to create PROJECT_INDEX.json in any project"
 echo "   • Reference with @PROJECT_INDEX.json when you need architectural awareness"
-echo "   • The index is created automatically when you use -i flag"
+echo "   • The index updates automatically when you edit files"
 echo ""
 echo "📚 For more information, see: $INSTALL_DIR/README.md"
