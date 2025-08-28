@@ -1365,7 +1365,39 @@ def matches_gitignore_pattern(path: Path, patterns: Set[str], root_path: Path) -
     return False
 
 
-def should_index_file(path: Path, root_path: Path = None) -> bool:
+def is_git_submodule(path: Path) -> bool:
+    """Check if a directory is a Git submodule."""
+    # A submodule has a .git file (not directory) that points to the real git dir
+    git_path = path / '.git'
+    if git_path.exists() and git_path.is_file():
+        return True
+    return False
+
+
+def get_submodule_paths(root_path: Path) -> Set[Path]:
+    """Get all submodule paths in the project."""
+    submodule_paths = set()
+    gitmodules_file = root_path / '.gitmodules'
+    
+    if gitmodules_file.exists():
+        try:
+            with open(gitmodules_file, 'r') as f:
+                content = f.read()
+                # Parse .gitmodules to find submodule paths
+                for line in content.split('\n'):
+                    line = line.strip()
+                    if line.startswith('path ='):
+                        path = line.split('=', 1)[1].strip()
+                        submodule_path = root_path / path
+                        if submodule_path.exists():
+                            submodule_paths.add(submodule_path)
+        except Exception:
+            pass
+    
+    return submodule_paths
+
+
+def should_index_file(path: Path, root_path: Path = None, exclude_submodules: bool = False) -> bool:
     """Check if we should index this file."""
     # Must be a code or markdown file
     if not (path.suffix in CODE_EXTENSIONS or path.suffix in MARKDOWN_EXTENSIONS):
@@ -1375,6 +1407,18 @@ def should_index_file(path: Path, root_path: Path = None) -> bool:
     for part in path.parts:
         if part in IGNORE_DIRS:
             return False
+    
+    # If excluding submodules, check if file is in a submodule
+    if exclude_submodules and root_path:
+        submodule_paths = get_submodule_paths(root_path)
+        for submodule_path in submodule_paths:
+            try:
+                # Check if file is inside this submodule
+                path.relative_to(submodule_path)
+                return False  # File is in a submodule, skip it
+            except ValueError:
+                # Not in this submodule, continue checking
+                pass
     
     # If root_path provided, check gitignore patterns
     if root_path:

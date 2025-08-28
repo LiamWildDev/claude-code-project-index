@@ -1,1 +1,567 @@
-{"at":"2025-08-22T12:27:38.295349","root":".","tree":[".","\u251c\u2500\u2500 scripts/ (6 files)","\u251c\u2500\u2500 tests/ (4 files)","\u2514\u2500\u2500 README.md"],"stats":{"total_files":9,"total_directories":2,"fully_parsed":{"shell":1,"python":4},"listed_only":{"json":1,"shell":3},"markdown_files":2},"f":{"s/find_python.sh":["s",["find_python:0:()::"]],"s/i_flag_hook.py":["p",["find_project_root:23:()::Find project root by looking for .git or common project markers.","get_last_interactive_size:45:():find_project_root:Get the last remembered -i size from the index.","parse_index_flag:66:(prompt):get_last_interactive_size:Parse -i or -ic flag with optional size.","calculate_files_hash:104:(project_root)::Calculate hash of non-ignored files to detect changes.","should_regenerate_index:141:(project_root, index_path, requested_size_k):calculate_files_hash:Determine if index needs regeneration.","generate_index_at_size:173:(project_root, target_size_k, is_clipboard_mode=False):calculate_files_hash:Generate index at specific token size.","copy_to_clipboard:259:(prompt, index_path)::Copy prompt, instructions, and index to clipboard for external AI.","main:566:():copy_to_clipboard,find_project_root,generate_index_at_size,parse_index_flag,should_regenerate_index:Process UserPromptSubmit hook for -i and -ic flag detection."]],"s/index_utils.py":["p",["extract_function_calls_python:74:(body:str, all_functions:Set[str])>List[str]::Extract function calls from Python code body.","extract_function_calls_javascript:104:(body:str, all_functions:Set[str])>List[str]::Extract function calls from JavaScript/TypeScript code body.","build_call_graph:132:(functions:Dict, classes:Dict)>Tuple[Dict, Dict]::Build bidirectional call graph from extracted functions and methods.","extract_python_signatures:161:(content:str)>Dict[str, Dict]:extract_function_calls_python:Extract Python function and class signatures with full details for all files.","extract_javascript_signatures:545:(content:str)>Dict[str, any]:extract_function_calls_javascript,pos_to_line:Extract JavaScript/TypeScript function and class signatures with full details.","extract_function_calls_shell:906:(body:str, all_functions:Set[str])>List[str]::Extract function calls from shell script body.","extract_shell_signatures:928:(content:str)>Dict[str, any]:extract_function_calls_shell:Extract shell script function signatures and structure.","extract_markdown_structure:1186:(file_path:Path)>Dict[str, List[str]]::Extract headers and architectural hints from markdown files.","infer_file_purpose:1217:(file_path:Path)>Optional[str]::Infer the purpose of a file from its name and location.","infer_directory_purpose:1240:(path:Path, files_within:List[str])>Optional[str]::Infer directory purpose from naming patterns and contents.","get_language_name:1270:(extension:str)>str::Get readable language name from extension.","parse_gitignore:1281:(gitignore_path:Path)>List[str]::Parse a .gitignore file and return list of patterns.","load_gitignore_patterns:1301:(root_path:Path)>Set[str]:parse_gitignore:Load all gitignore patterns from project root and merge with defaults.","matches_gitignore_pattern:1324:(path:Path, patterns:Set[str], root_path:Path)>bool::Check if a path matches any gitignore pattern.","should_index_file:1368:(path:Path, root_path:Path = None)>bool:load_gitignore_patterns,matches_gitignore_pattern:Check if we should index this file.","get_git_files:1388:(root_path:Path)>Optional[List[Path]]::"]],"s/project_index.py":["p",["generate_tree_structure:40:(root_path:Path, max_depth:int = MAX_TREE_DEPTH)>List[str]:add_tree_level,should_include_dir:Generate a compact ASCII tree representation of the directory structure.","build_index:109:(root_dir:str)>Tuple[Dict, int]:generate_tree_structure:Build the enhanced index with architectural awareness.","convert_to_enhanced_dense_format:404:(index:Dict)>Dict:truncate_doc:Convert to enhanced dense format that preserves all AI-relevant information.","compress_if_needed:529:(dense_index:Dict, target_size:int = MAX_INDEX_SIZE)>Dict::Compress dense index further if it exceeds size limit.","print_summary:660:(index:Dict, skipped_count:int)::Print a helpful summary of what was indexed.","main:708:():build_index,compress_if_needed,convert_to_enhanced_dense_format,print_summary:Run the enhanced indexer."]],"s/stop_hook.py":["p",["main:14:()::Stop hook - regenerate index if PROJECT_INDEX.json exists."]]},"g":[["extract_javascript_signatures","extract_function_calls_javascript"],["extract_python_signatures","extract_function_calls_python"],["extract_shell_signatures","extract_function_calls_shell"],["main","convert_to_enhanced_dense_format"],["extract_javascript_signatures","pos_to_line"],["get_last_interactive_size","find_project_root"],["should_index_file","matches_gitignore_pattern"],["main","copy_to_clipboard"],["main","find_project_root"],["generate_tree_structure","add_tree_level"],["should_regenerate_index","calculate_files_hash"],["main","build_index"],["generate_tree_structure","should_include_dir"],["main","print_summary"],["convert_to_enhanced_dense_format","truncate_doc"],["main","should_regenerate_index"],["should_index_file","load_gitignore_patterns"],["build_index","generate_tree_structure"],["parse_index_flag","get_last_interactive_size"],["main","parse_index_flag"],["main","compress_if_needed"],["load_gitignore_patterns","parse_gitignore"],["generate_index_at_size","calculate_files_hash"],["main","generate_index_at_size"]],"d":{".claude-code-ericbuess/CONTEXT_STATE.md":["\ud83d\udd04 Auto-Generated Context State","\ud83d\udccd Current Session","\ud83d\udcca Git Status","\ud83d\udcdd Recently Modified Files","\ud83d\udccc Context Notes"],"README.md":["Project Index for Claude Code","Background","Quick Install","Usage","Or manually create/update the index anytime","What It Does","Three Ways to Use","Small Projects - Direct Reference with `@PROJECT_INDEX.json`","Reference directly in your prompt","Or auto-load in every session by adding to CLAUDE.md:"]},"deps":{"scripts/i_flag_hook.py":["json","sys","os","re","subprocess","hashlib","time","pathlib","datetime","sys","vm_client_network","vm_client","base64","pyperclip"],"scripts/index_utils.py":["re","fnmatch","pathlib","typing","subprocess"],"scripts/project_index.py":["json","os","re","datetime","pathlib","typing","index_utils","index_utils","sys"],"scripts/stop_hook.py":["json","sys","os","subprocess","pathlib"]},"dir_purposes":{"scripts":"Build and utility scripts"},"staleness":1755278858.312746}
+{
+  "indexed_at": "2025-08-28T09:51:10.781404",
+  "root": ".",
+  "project_structure": {
+    "type": "tree",
+    "root": ".",
+    "tree": [
+      ".",
+      "\u251c\u2500\u2500 scripts/ (10 files)",
+      "\u2514\u2500\u2500 README.md"
+    ]
+  },
+  "documentation_map": {
+    "README.md": {
+      "sections": [
+        "Project Index for Claude Code (v0.1.0)",
+        "\ud83d\ude80 Quick Install",
+        "\ud83d\udcd6 Usage",
+        "Create an Index for Your Project",
+        "Using the Index",
+        "Ask architectural questions",
+        "Or auto-load in every session by adding to CLAUDE.md:",
+        "Add @PROJECT_INDEX.json to your CLAUDE.md file",
+        "\ud83d\udce6 Updating",
+        "\ud83d\udd27 Highly Recommended: Claude Code Docs"
+      ],
+      "architecture_hints": []
+    },
+    "SUBMODULES.md": {
+      "sections": [
+        "Git Submodules Support for PROJECT_INDEX",
+        "Overview",
+        "Quick Start",
+        "Option 1: Using the Interactive Menu (Recommended)",
+        "Navigate to your parent project",
+        "Run the interactive submodule manager",
+        "Option 2: Manual Indexing with Flags",
+        "Index parent project only (excludes submodules)",
+        "Navigate to a submodule and index it separately",
+        "Go back to parent"
+      ],
+      "architecture_hints": [
+        "/index-submodules",
+        "/index"
+      ]
+    }
+  },
+  "directory_purposes": {
+    "scripts": "Build and utility scripts"
+  },
+  "stats": {
+    "total_files": 12,
+    "total_directories": 1,
+    "fully_parsed": {
+      "python": 6,
+      "shell": 1
+    },
+    "listed_only": {
+      "shell": 5
+    },
+    "markdown_files": 2
+  },
+  "files": {
+    "uninstall.sh": {
+      "language": "shell",
+      "parsed": false
+    },
+    "install.sh": {
+      "language": "shell",
+      "parsed": false
+    },
+    "scripts/submodule_index.py": {
+      "language": "python",
+      "parsed": true,
+      "imports": [
+        "json",
+        "os",
+        "subprocess",
+        "sys",
+        "datetime",
+        "pathlib",
+        "typing",
+        "project_index",
+        "index_utils"
+      ],
+      "functions": {
+        "detect_git_submodules": {
+          "doc": "Detect all Git submodules in the current project.",
+          "signature": "(root_dir: Path) -> List[Dict[str, str]]",
+          "called_by": [
+            "main"
+          ]
+        },
+        "is_path_in_submodule": {
+          "doc": "Check if a path is inside any submodule directory.",
+          "signature": "(file_path: Path, submodule_paths: List[Path]) -> bool"
+        },
+        "build_index_excluding_submodules": {
+          "doc": "Build index for parent project, excluding submodule directories.",
+          "signature": "(root_dir: str, submodules: List[Dict[str, str]]) -> Tuple[Dict, int]",
+          "called_by": [
+            "main"
+          ]
+        },
+        "build_submodule_index": {
+          "doc": "Build index for a specific submodule.",
+          "signature": "(submodule_path: str, submodule_name: str) -> Tuple[Optional[Dict], int]",
+          "called_by": [
+            "main"
+          ]
+        },
+        "save_index_metadata": {
+          "doc": "Save metadata about all indexes in the project.",
+          "signature": "(root_dir: Path, metadata: Dict)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "interactive_menu": {
+          "doc": "Display interactive menu for indexing options.",
+          "signature": "(submodules: List[Dict[str, str]]) -> str",
+          "called_by": [
+            "main"
+          ]
+        },
+        "choose_submodule": {
+          "doc": "Let user choose a specific submodule to index.",
+          "signature": "(submodules: List[Dict[str, str]]) -> Optional[Dict[str, str]]",
+          "called_by": [
+            "main"
+          ]
+        },
+        "show_index_status": {
+          "doc": "Display the status of all indexes in the project.",
+          "signature": "(root_dir: Path, submodules: List[Dict[str, str]])",
+          "called_by": [
+            "main"
+          ]
+        },
+        "main": {
+          "doc": "Main entry point for submodule index manager.",
+          "calls": [
+            "build_index_excluding_submodules",
+            "build_submodule_index",
+            "choose_submodule",
+            "detect_git_submodules",
+            "interactive_menu",
+            "save_index_metadata",
+            "show_index_status"
+          ],
+          "signature": "()"
+        }
+      },
+      "classes": {},
+      "call_graph": {}
+    },
+    "scripts/submodule-index-helper.sh": {
+      "language": "shell",
+      "parsed": false,
+      "purpose": "Utility functions"
+    },
+    "scripts/index_utils.py": {
+      "language": "python",
+      "parsed": true,
+      "purpose": "Utility functions",
+      "imports": [
+        "re",
+        "fnmatch",
+        "pathlib",
+        "typing"
+      ],
+      "functions": {
+        "extract_function_calls_python": {
+          "doc": "Extract function calls from Python code body.",
+          "signature": "(body: str, all_functions: Set[str]) -> List[str]",
+          "called_by": [
+            "extract_python_signatures"
+          ]
+        },
+        "extract_function_calls_javascript": {
+          "doc": "Extract function calls from JavaScript/TypeScript code body.",
+          "signature": "(body: str, all_functions: Set[str]) -> List[str]",
+          "called_by": [
+            "extract_javascript_signatures"
+          ]
+        },
+        "build_call_graph": {
+          "doc": "Build bidirectional call graph from extracted functions and methods.",
+          "signature": "(functions: Dict, classes: Dict) -> Tuple[Dict, Dict]"
+        },
+        "extract_python_signatures": {
+          "doc": "Extract Python function and class signatures with full details for all files.",
+          "calls": [
+            "extract_function_calls_python"
+          ],
+          "signature": "(content: str) -> Dict[str, Dict]"
+        },
+        "extract_javascript_signatures": {
+          "doc": "Extract JavaScript/TypeScript function and class signatures with full details.",
+          "calls": [
+            "extract_function_calls_javascript"
+          ],
+          "signature": "(content: str) -> Dict[str, any]"
+        },
+        "extract_function_calls_shell": {
+          "doc": "Extract function calls from shell script body.",
+          "signature": "(body: str, all_functions: Set[str]) -> List[str]",
+          "called_by": [
+            "extract_shell_signatures"
+          ]
+        },
+        "extract_shell_signatures": {
+          "doc": "Extract shell script function signatures and structure.",
+          "calls": [
+            "extract_function_calls_shell"
+          ],
+          "signature": "(content: str) -> Dict[str, any]"
+        },
+        "extract_markdown_structure": {
+          "doc": "Extract headers and architectural hints from markdown files.",
+          "signature": "(file_path: Path) -> Dict[str, List[str]]"
+        },
+        "infer_file_purpose": {
+          "doc": "Infer the purpose of a file from its name and location.",
+          "signature": "(file_path: Path) -> Optional[str]"
+        },
+        "infer_directory_purpose": {
+          "doc": "Infer directory purpose from naming patterns and contents.",
+          "signature": "(path: Path, files_within: List[str]) -> Optional[str]"
+        },
+        "get_language_name": {
+          "doc": "Get readable language name from extension.",
+          "signature": "(extension: str) -> str"
+        },
+        "parse_gitignore": {
+          "doc": "Parse a .gitignore file and return list of patterns.",
+          "signature": "(gitignore_path: Path) -> List[str]",
+          "called_by": [
+            "load_gitignore_patterns"
+          ]
+        },
+        "load_gitignore_patterns": {
+          "doc": "Load all gitignore patterns from project root and merge with defaults.",
+          "calls": [
+            "parse_gitignore"
+          ],
+          "signature": "(root_path: Path) -> Set[str]",
+          "called_by": [
+            "should_index_file"
+          ]
+        },
+        "matches_gitignore_pattern": {
+          "doc": "Check if a path matches any gitignore pattern.",
+          "signature": "(path: Path, patterns: Set[str], root_path: Path) -> bool",
+          "called_by": [
+            "should_index_file"
+          ]
+        },
+        "is_git_submodule": {
+          "doc": "Check if a directory is a Git submodule.",
+          "signature": "(path: Path) -> bool"
+        },
+        "get_submodule_paths": {
+          "doc": "Get all submodule paths in the project.",
+          "signature": "(root_path: Path) -> Set[Path]",
+          "called_by": [
+            "should_index_file"
+          ]
+        },
+        "should_index_file": {
+          "doc": "Check if we should index this file.",
+          "calls": [
+            "get_submodule_paths",
+            "load_gitignore_patterns",
+            "matches_gitignore_pattern"
+          ],
+          "signature": "(path: Path, root_path: Path = None, exclude_submodules: bool = False) -> bool"
+        }
+      },
+      "classes": {},
+      "constants": {
+        "IGNORE_DIRS": "collection",
+        "PARSEABLE_LANGUAGES": "collection",
+        "CODE_EXTENSIONS": "collection",
+        "MARKDOWN_EXTENSIONS": "collection",
+        "DIRECTORY_PURPOSES": "collection"
+      },
+      "call_graph": {}
+    },
+    "scripts/find_python.sh": {
+      "language": "shell",
+      "parsed": true,
+      "functions": {
+        "find_python": "()"
+      },
+      "call_graph": {}
+    },
+    "scripts/project_index.py": {
+      "language": "python",
+      "parsed": true,
+      "imports": [
+        "json",
+        "os",
+        "re",
+        "datetime",
+        "pathlib",
+        "typing",
+        "index_utils",
+        "sys",
+        "index_utils",
+        "sys"
+      ],
+      "functions": {
+        "generate_tree_structure": {
+          "doc": "Generate a compact ASCII tree representation of the directory structure.",
+          "calls": [
+            "add_tree_level",
+            "should_include_dir"
+          ],
+          "signature": "(root_path: Path, max_depth: int = MAX_TREE_DEPTH) -> List[str]",
+          "called_by": [
+            "build_index"
+          ]
+        },
+        "build_index": {
+          "doc": "Build the enhanced index with architectural awareness.",
+          "calls": [
+            "generate_tree_structure"
+          ],
+          "signature": "(root_dir: str, exclude_submodules: bool = False) -> Tuple[Dict, int]",
+          "called_by": [
+            "main"
+          ]
+        },
+        "compress_index_if_needed": {
+          "doc": "Compress index if it exceeds size limit.",
+          "signature": "(index: Dict) -> Dict",
+          "called_by": [
+            "main"
+          ]
+        },
+        "print_summary": {
+          "doc": "Print a helpful summary of what was indexed.",
+          "signature": "(index: Dict, skipped_count: int)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "main": {
+          "doc": "Run the enhanced indexer.",
+          "calls": [
+            "build_index",
+            "compress_index_if_needed",
+            "print_summary"
+          ],
+          "signature": "()"
+        }
+      },
+      "classes": {},
+      "constants": {
+        "MAX_FILES": "number",
+        "MAX_INDEX_SIZE": "value",
+        "MAX_TREE_DEPTH": "number"
+      },
+      "call_graph": {}
+    },
+    "scripts/detect_external_changes.py": {
+      "language": "python",
+      "parsed": true,
+      "imports": [
+        "os",
+        "json",
+        "pathlib",
+        "datetime",
+        "subprocess",
+        "sys"
+      ],
+      "functions": {
+        "get_file_mtime": {
+          "doc": "Get file modification time as timestamp.",
+          "signature": "(file_path)",
+          "called_by": [
+            "detect_external_changes"
+          ]
+        },
+        "detect_external_changes": {
+          "calls": [
+            "get_file_mtime"
+          ],
+          "signature": "(index_path, project_root)"
+        },
+        "check_git_changes": "(project_root)"
+      },
+      "classes": {},
+      "call_graph": {}
+    },
+    "scripts/run_python.sh": {
+      "language": "shell",
+      "parsed": false
+    },
+    "scripts/reindex_if_needed.py": {
+      "language": "python",
+      "parsed": true,
+      "imports": [
+        "json",
+        "sys",
+        "os",
+        "subprocess",
+        "pathlib",
+        "datetime"
+      ],
+      "functions": {
+        "check_index_features": {
+          "doc": "Check if index has all required features.",
+          "signature": "(index_path)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "check_index_staleness": {
+          "doc": "Check if index is older than threshold.",
+          "signature": "(index_path, threshold_hours=24)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "check_missing_documentation": {
+          "doc": "Check if important documentation files are missing from index.",
+          "signature": "(index_path, project_root)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "check_structural_changes": {
+          "doc": "Check if directory structure has significantly changed.",
+          "signature": "(index_path, project_root)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "count_hook_updates": {
+          "doc": "Count how many files were updated by hooks vs full index.",
+          "signature": "(index_path)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "run_reindex": {
+          "doc": "Run the project_index.py script to perform full reindex.",
+          "signature": "(project_root)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "main": {
+          "doc": "Main hook entry point.",
+          "calls": [
+            "check_index_features",
+            "check_index_staleness",
+            "check_missing_documentation",
+            "check_structural_changes",
+            "count_hook_updates",
+            "run_reindex"
+          ],
+          "signature": "()"
+        }
+      },
+      "classes": {},
+      "call_graph": {}
+    },
+    "scripts/update_index.py": {
+      "language": "python",
+      "parsed": true,
+      "imports": [
+        "json",
+        "sys",
+        "os",
+        "pathlib",
+        "datetime",
+        "index_utils"
+      ],
+      "functions": {
+        "find_index_utils": {
+          "doc": "Find index_utils.py in the project directory or system location.",
+          "signature": "()"
+        },
+        "update_file_in_index": {
+          "doc": "Update a single file's entry in the enhanced index.",
+          "signature": "(index_path, file_path, project_root)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "main": {
+          "doc": "Process PostToolUse hook input and update index.",
+          "calls": [
+            "update_file_in_index"
+          ],
+          "signature": "()"
+        }
+      },
+      "classes": {},
+      "call_graph": {}
+    },
+    "scripts/project-index-helper.sh": {
+      "language": "shell",
+      "parsed": false,
+      "purpose": "Utility functions"
+    }
+  },
+  "dependency_graph": {
+    "scripts/submodule_index.py": [
+      "json",
+      "os",
+      "subprocess",
+      "sys",
+      "datetime",
+      "pathlib",
+      "typing",
+      "project_index",
+      "index_utils"
+    ],
+    "scripts/index_utils.py": [
+      "re",
+      "fnmatch",
+      "pathlib",
+      "typing"
+    ],
+    "scripts/project_index.py": [
+      "json",
+      "os",
+      "re",
+      "datetime",
+      "pathlib",
+      "typing",
+      "index_utils",
+      "sys",
+      "index_utils",
+      "sys"
+    ],
+    "scripts/detect_external_changes.py": [
+      "os",
+      "json",
+      "pathlib",
+      "datetime",
+      "subprocess",
+      "sys"
+    ],
+    "scripts/reindex_if_needed.py": [
+      "json",
+      "sys",
+      "os",
+      "subprocess",
+      "pathlib",
+      "datetime"
+    ],
+    "scripts/update_index.py": [
+      "json",
+      "sys",
+      "os",
+      "pathlib",
+      "datetime",
+      "index_utils"
+    ]
+  },
+  "staleness_check": 1755784270.828989
+}

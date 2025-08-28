@@ -14,7 +14,7 @@ Usage: python project_index.py
 Output: PROJECT_INDEX.json
 """
 
-__version__ = "0.2.0-beta"
+__version__ = "0.1.0"
 
 import json
 import os
@@ -106,7 +106,7 @@ def generate_tree_structure(root_path: Path, max_depth: int = MAX_TREE_DEPTH) ->
 # These functions are now imported from index_utils
 
 
-def build_index(root_dir: str) -> Tuple[Dict, int]:
+def build_index(root_dir: str, exclude_submodules: bool = False) -> Tuple[Dict, int]:
     """Build the enhanced index with architectural awareness."""
     root = Path(root_dir)
     index = {
@@ -139,49 +139,24 @@ def build_index(root_dir: str) -> Tuple[Dict, int]:
     skipped_count = 0
     directory_files = {}  # Track files per directory
     
-    # Try to use git ls-files for better performance and accuracy
+    # Walk the directory tree
     print("🔍 Indexing files...")
-    from index_utils import get_git_files
-    git_files = get_git_files(root)
-    
-    if git_files is not None:
-        # Use git-based file discovery
-        print(f"   Using git ls-files (found {len(git_files)} files)")
-        files_to_process = git_files
-        
-        # Count directories from git files
-        seen_dirs = set()
-        for file_path in git_files:
-            for parent in file_path.parents:
-                if parent != root and parent not in seen_dirs:
-                    seen_dirs.add(parent)
-                    if parent not in directory_files:
-                        directory_files[parent] = []
-        dir_count = len(seen_dirs)
-    else:
-        # Fallback to manual file discovery
-        print("   Using manual file discovery (git not available)")
-        files_to_process = []
-        for file_path in root.rglob('*'):
-            if file_path.is_dir():
-                # Track directories
-                if not any(part in IGNORE_DIRS for part in file_path.parts):
-                    dir_count += 1
-                    directory_files[file_path] = []
-                continue
-            
-            if file_path.is_file():
-                files_to_process.append(file_path)
-    
-    # Process files
-    for file_path in files_to_process:
+    for file_path in root.rglob('*'):
         if file_count >= MAX_FILES:
             print(f"⚠️  Stopping at {MAX_FILES} files (project too large)")
-            print(f"   Consider adding more patterns to .gitignore to reduce scope")
-            print(f"   Or ask Claude to modify MAX_FILES in scripts/project_index.py")
             break
-        
-        if not should_index_file(file_path, root):
+            
+        if file_path.is_dir():
+            # Track directories
+            if not any(part in IGNORE_DIRS for part in file_path.parts):
+                dir_count += 1
+                directory_files[file_path] = []
+            continue
+            
+        if not file_path.is_file():
+            continue
+            
+        if not should_index_file(file_path, root, exclude_submodules):
             skipped_count += 1
             continue
         
@@ -401,260 +376,29 @@ def build_index(root_dir: str) -> Tuple[Dict, int]:
 # infer_file_purpose is now imported from index_utils
 
 
-def convert_to_enhanced_dense_format(index: Dict) -> Dict:
-    """Convert to enhanced dense format that preserves all AI-relevant information."""
-    dense = {
-        'at': index.get('indexed_at', ''),
-        'root': index.get('root', '.'),
-        'tree': index.get('project_structure', {}).get('tree', [])[:20],  # Compact tree
-        'stats': index.get('stats', {}),
-        'f': {},     # Files
-        'g': [],     # Call graph edges
-        'd': {},     # Documentation map
-        'deps': index.get('dependency_graph', {}),  # Keep dependencies
-    }
+def compress_index_if_needed(index: Dict) -> Dict:
+    """Compress index if it exceeds size limit."""
+    index_json = json.dumps(index, indent=2)
     
-    def truncate_doc(doc: str, max_len: int = 80) -> str:
-        """Truncate docstring to max length."""
-        if not doc:
-            return ''
-        doc = doc.strip().replace('\n', ' ')
-        if len(doc) > max_len:
-            return doc[:max_len-3] + '...'
-        return doc
+    if len(index_json) <= MAX_INDEX_SIZE:
+        return index
     
-    # Build compressed files section
-    for path, info in index.get('files', {}).items():
-        if not info.get('parsed', False):
-            continue
-            
-        # Use abbreviated path
-        abbrev_path = path.replace('scripts/', 's/').replace('src/', 'sr/').replace('tests/', 't/')
-        
-        file_entry = []
-        
-        # Add language as single letter
-        lang = info.get('language', 'unknown')
-        lang_map = {'python': 'p', 'javascript': 'j', 'typescript': 't', 'shell': 's', 'json': 'j'}
-        file_entry.append(lang_map.get(lang, 'u'))
-        
-        # Compress functions with docstrings: name:line:signature:calls:docstring
-        funcs = []
-        for fname, fdata in info.get('functions', {}).items():
-            if isinstance(fdata, dict):
-                line = fdata.get('line', 0)
-                sig = fdata.get('signature', '()')
-                # Compress signature
-                sig = sig.replace(' -> ', '>').replace(': ', ':')
-                calls = ','.join(fdata.get('calls', []))
-                doc = truncate_doc(fdata.get('doc', ''))
-                funcs.append(f"{fname}:{line}:{sig}:{calls}:{doc}")
-            else:
-                funcs.append(f"{fname}:0:{fdata}::")
-        
-        if funcs:
-            file_entry.append(funcs)
-        
-        # Compress classes with methods and docstrings
-        classes = {}
-        for cname, cdata in info.get('classes', {}).items():
-            if isinstance(cdata, dict):
-                class_line = str(cdata.get('line', 0))
-                methods = []
-                for mname, mdata in cdata.get('methods', {}).items():
-                    if isinstance(mdata, dict):
-                        mline = mdata.get('line', 0)
-                        msig = mdata.get('signature', '()')
-                        msig = msig.replace(' -> ', '>').replace(': ', ':')
-                        mcalls = ','.join(mdata.get('calls', []))
-                        mdoc = truncate_doc(mdata.get('doc', ''))
-                        methods.append(f"{mname}:{mline}:{msig}:{mcalls}:{mdoc}")
-                    else:
-                        methods.append(f"{mname}:0:{mdata}::")
-                
-                if methods or class_line != '0':
-                    classes[cname] = [class_line, methods]
-        
-        if classes:
-            file_entry.append(classes)
-        
-        # Only add file if it has content
-        if len(file_entry) > 1:
-            dense['f'][abbrev_path] = file_entry
+    print(f"⚠️  Index too large ({len(index_json)} bytes), compressing...")
     
-    # Build call graph edges (keep bidirectional info)
-    edges = set()
-    for path, info in index.get('files', {}).items():
-        if info.get('parsed', False):
-            # Extract function calls
-            for fname, fdata in info.get('functions', {}).items():
-                if isinstance(fdata, dict):
-                    for called in fdata.get('calls', []):
-                        edges.add((fname, called))
-                    for caller in fdata.get('called_by', []):
-                        edges.add((caller, fname))
-            
-            # Extract method calls
-            for cname, cdata in info.get('classes', {}).items():
-                if isinstance(cdata, dict):
-                    for mname, mdata in cdata.get('methods', {}).items():
-                        if isinstance(mdata, dict):
-                            full_name = f"{cname}.{mname}"
-                            for called in mdata.get('calls', []):
-                                edges.add((full_name, called))
-                            for caller in mdata.get('called_by', []):
-                                edges.add((caller, full_name))
+    # First, reduce tree depth
+    if len(index['project_structure']['tree']) > 100:
+        index['project_structure']['tree'] = index['project_structure']['tree'][:100]
+        index['project_structure']['tree'].append("... (truncated)")
     
-    # Convert edges to list format
-    dense['g'] = [[e[0], e[1]] for e in edges]
+    # If still too large, remove some listed-only files
+    while len(json.dumps(index, indent=2)) > MAX_INDEX_SIZE and index['files']:
+        # Find and remove a listed-only file
+        for path, info in list(index['files'].items()):
+            if not info.get('parsed', False):
+                del index['files'][path]
+                break
     
-    # Add compressed documentation map
-    for doc_path, doc_info in index.get('documentation_map', {}).items():
-        sections = doc_info.get('sections', [])
-        if sections:
-            # Keep first 10 sections for better context
-            dense['d'][doc_path] = sections[:10]
-    
-    # Add directory purposes if present
-    if 'directory_purposes' in index:
-        dense['dir_purposes'] = index['directory_purposes']
-    
-    # Add staleness check timestamp
-    if 'staleness_check' in index:
-        dense['staleness'] = index['staleness_check']
-    
-    return dense
-
-
-def compress_if_needed(dense_index: Dict, target_size: int = MAX_INDEX_SIZE) -> Dict:
-    """Compress dense index further if it exceeds size limit."""
-    index_json = json.dumps(dense_index, separators=(',', ':'))
-    current_size = len(index_json)
-    
-    if current_size <= target_size:
-        return dense_index
-    
-    print(f"⚠️  Index too large ({current_size} bytes), compressing to {target_size}...")
-    
-    # Add safeguards
-    iteration = 0
-    MAX_ITERATIONS = 10
-    
-    # Progressive compression strategies
-    
-    # Step 1: Reduce tree to 10 items
-    iteration += 1
-    if iteration > MAX_ITERATIONS:
-        print(f"  ⚠️ Max compression iterations reached. Returning partially compressed index.")
-        return dense_index
-    
-    print(f"  Step {iteration}: Reducing tree structure...")
-    if len(dense_index.get('tree', [])) > 10:
-        dense_index['tree'] = dense_index['tree'][:10]
-        dense_index['tree'].append("... (truncated)")
-        current_size = len(json.dumps(dense_index, separators=(',', ':')))
-        if current_size <= target_size:
-            print(f"  ✅ Compressed to {current_size} bytes")
-            return dense_index
-        
-    # Step 2: Truncate docstrings to 40 chars
-    iteration += 1
-    if iteration > MAX_ITERATIONS:
-        print(f"  ⚠️ Max compression iterations reached. Returning partially compressed index.")
-        return dense_index
-    
-    print(f"  Step {iteration}: Truncating docstrings...")
-    for path, file_data in dense_index.get('f', {}).items():
-        if len(file_data) > 1 and isinstance(file_data[1], list):
-            # Truncate function docstrings
-            new_funcs = []
-            for func in file_data[1]:
-                parts = func.split(':')
-                if len(parts) >= 5 and len(parts[4]) > 40:
-                    parts[4] = parts[4][:37] + '...'
-                new_funcs.append(':'.join(parts))
-            file_data[1] = new_funcs
-    
-    current_size = len(json.dumps(dense_index, separators=(',', ':')))
-    if current_size <= target_size:
-        print(f"  ✅ Compressed to {current_size} bytes")
-        return dense_index
-        
-    # Step 3: Remove docstrings entirely
-    iteration += 1
-    if iteration > MAX_ITERATIONS:
-        print(f"  ⚠️ Max compression iterations reached. Returning partially compressed index.")
-        return dense_index
-    
-    print(f"  Step {iteration}: Removing docstrings entirely...")
-    for path, file_data in dense_index.get('f', {}).items():
-        if len(file_data) > 1 and isinstance(file_data[1], list):
-            # Remove docstrings from functions
-            new_funcs = []
-            for func in file_data[1]:
-                parts = func.split(':')
-                if len(parts) >= 5:
-                    parts[4] = ''  # Remove docstring
-                new_funcs.append(':'.join(parts))
-            file_data[1] = new_funcs
-    
-    current_size = len(json.dumps(dense_index, separators=(',', ':')))
-    if current_size <= target_size:
-        print(f"  ✅ Compressed to {current_size} bytes")
-        return dense_index
-    
-    # Step 4: Remove documentation map
-    iteration += 1
-    if iteration > MAX_ITERATIONS:
-        print(f"  ⚠️ Max compression iterations reached. Returning partially compressed index.")
-        return dense_index
-    
-    print(f"  Step {iteration}: Removing documentation map...")
-    if 'd' in dense_index:
-        del dense_index['d']
-    
-    current_size = len(json.dumps(dense_index, separators=(',', ':')))
-    if current_size <= target_size:
-        print(f"  ✅ Compressed to {current_size} bytes")
-        return dense_index
-    
-    # Step 5: Emergency truncation - keep most important files
-    iteration += 1
-    if iteration > MAX_ITERATIONS:
-        print(f"  ⚠️ Max compression iterations reached. Returning partially compressed index.")
-        return dense_index
-    
-    print(f"  Step {iteration}: Emergency truncation - keeping most important files...")
-    if dense_index.get('f'):
-        files_to_keep = int(len(dense_index['f']) * (target_size / current_size) * 0.9)
-        if files_to_keep < 10:
-            files_to_keep = 10
-        
-        # Calculate importance based on function count
-        file_importance = {}
-        for path, file_data in dense_index['f'].items():
-            importance = 0
-            if len(file_data) > 1 and isinstance(file_data[1], list):
-                importance = len(file_data[1])  # Number of functions
-            if len(file_data) > 2:  # Has classes
-                importance += 5
-            file_importance[path] = importance
-        
-        # Keep most important files
-        sorted_files = sorted(file_importance.items(), key=lambda x: x[1], reverse=True)
-        files_to_keep_set = set(path for path, _ in sorted_files[:files_to_keep])
-        
-        # Remove less important files
-        for path in list(dense_index['f'].keys()):
-            if path not in files_to_keep_set:
-                del dense_index['f'][path]
-        
-        print(f"  Emergency truncation: kept {len(dense_index['f'])} most important files")
-    
-    final_size = len(json.dumps(dense_index, separators=(',', ':')))
-    print(f"  Compressed from {len(index_json)} to {final_size} bytes")
-    
-    return dense_index
+    return index
 
 
 def print_summary(index: Dict, skipped_count: int):
@@ -690,15 +434,15 @@ def print_summary(index: Dict, skipped_count: int):
             print(f"   • {count} {lang.capitalize()} files")
     
     # Show documentation insights
-    if index.get('d'):
+    if index['documentation_map']:
         print(f"\n📚 Documentation insights:")
-        for doc_file, sections in list(index['d'].items())[:3]:
-            print(f"   • {doc_file}: {len(sections)} sections")
+        for doc_file, info in list(index['documentation_map'].items())[:3]:
+            print(f"   • {doc_file}: {len(info['sections'])} sections")
     
     # Show directory purposes
-    if index.get('dir_purposes'):
+    if index['directory_purposes']:
         print(f"\n🏗️  Directory structure:")
-        for dir_path, purpose in list(index['dir_purposes'].items())[:5]:
+        for dir_path, purpose in list(index['directory_purposes'].items())[:5]:
             print(f"   • {dir_path}/: {purpose}")
     
     if skipped_count > 0:
@@ -707,58 +451,53 @@ def print_summary(index: Dict, skipped_count: int):
 
 def main():
     """Run the enhanced indexer."""
-    print("🚀 Building Project Index...")
+    import sys
     
-    # Check for target size from environment
-    target_size_k = int(os.getenv('INDEX_TARGET_SIZE_K', '0'))
-    if target_size_k > 0:
-        # Convert k tokens to approximate bytes (1 token ≈ 4 chars)
-        target_size_bytes = target_size_k * 1000 * 4
-        print(f"   Target size: {target_size_k}k tokens (~{target_size_bytes:,} bytes)")
+    # Check for command line arguments
+    exclude_submodules = '--exclude-submodules' in sys.argv
+    
+    if exclude_submodules:
+        print("🚀 Building Project Index (excluding submodules)...")
     else:
-        target_size_bytes = MAX_INDEX_SIZE
-    
+        print("🚀 Building Project Index...")
     print("   Analyzing project structure and documentation...")
     
     # Build index for current directory
-    index, skipped_count = build_index('.')
+    index, skipped_count = build_index('.', exclude_submodules=exclude_submodules)
     
-    # Convert to enhanced dense format (always)
-    index = convert_to_enhanced_dense_format(index)
+    # Add metadata if submodules were excluded
+    if exclude_submodules:
+        from index_utils import get_submodule_paths
+        submodule_paths = get_submodule_paths(Path('.'))
+        if submodule_paths:
+            index['excluded_submodules'] = [str(p.relative_to(Path('.'))) for p in submodule_paths]
+            index['index_type'] = 'parent_only'
     
-    # Compress further if needed
-    index = compress_if_needed(index, target_size_bytes)
+    # Compress if needed
+    index = compress_index_if_needed(index)
     
-    # Add metadata if requested via environment
-    if target_size_k > 0:
-        if '_meta' not in index:
-            index['_meta'] = {}
-        # Note: Full metadata is added by the hook after generation
-        index['_meta']['target_size_k'] = target_size_k
-    
-    # Save to PROJECT_INDEX.json (minified)
+    # Save to PROJECT_INDEX.json
     output_path = Path('PROJECT_INDEX.json')
-    output_path.write_text(json.dumps(index, separators=(',', ':')))
+    output_path.write_text(json.dumps(index, indent=2))
     
     # Print summary
     print_summary(index, skipped_count)
     
     print(f"\n💾 Saved to: {output_path}")
     
-    # More concise output when called by hook
-    if target_size_k > 0:
-        actual_size = len(json.dumps(index, separators=(',', ':')))
-        actual_tokens = actual_size // 4 // 1000
-        print(f"📊 Size: {actual_tokens}k tokens (target was {target_size_k}k)")
-    else:
-        print("\n✨ Claude now has architectural awareness of your project!")
-        print("   • Knows WHERE to place new code")
-        print("   • Understands project structure")
-        print("   • Can navigate documentation")
-        print("\n📌 Benefits:")
-        print("   • Prevents code duplication")
-        print("   • Ensures proper file placement")
-        print("   • Maintains architectural consistency")
+    if exclude_submodules and 'excluded_submodules' in index:
+        print(f"\n📦 Excluded {len(index['excluded_submodules'])} submodule(s):")
+        for sub in index['excluded_submodules']:
+            print(f"   • {sub}")
+    
+    print("\n✨ Claude now has architectural awareness of your project!")
+    print("   • Knows WHERE to place new code")
+    print("   • Understands project structure")
+    print("   • Can navigate documentation")
+    print("\n📌 Benefits:")
+    print("   • Prevents code duplication")
+    print("   • Ensures proper file placement")
+    print("   • Maintains architectural consistency")
 
 
 if __name__ == '__main__':
